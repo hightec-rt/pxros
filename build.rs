@@ -2,12 +2,11 @@
 //!
 //! This is an implementation detail where both `Veecle` and `HighTec` are
 //! working.
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
-
+//!
 
 mod documentation_generator;
 use std::fs;
@@ -211,7 +210,9 @@ fn main() {
         .ctypes_prefix("crate::bindings::ffi")
         // FIXME: It has not been verified yet whether all enumerations are safe
         // to be used as rust enumerations, the bindings might contain UB!
-        .default_enum_style(bindgen::EnumVariation::Rust { non_exhaustive: false })
+        .default_enum_style(bindgen::EnumVariation::Rust {
+            non_exhaustive: false,
+        })
         .default_alias_style(bindgen::AliasVariation::NewType)
         // The following types add no semantic, so we make them transparent type exports.
         .type_alias("PxSize_t")
@@ -236,51 +237,40 @@ fn main() {
         .prepend_enum_name(false)
         // The default callbacks will emit `cargo:rerun-if-changed=_` for each header file.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .parse_callbacks(
-            Box::new(
-                DeriveDefmtCallbacks::new(
-                    &[
-                        "PxError_t",
-                        "PxMessageClass_t",
-                        "PxSvc_t",
-                        "PxProtectType_t",
-                        "_PxObjType_t",
-                        "PxOpoolType_t",
-                        "PxMcType_t",
-                        "_PxTmodebits",
-                        "PxMsgType_t",
-                        "PxStackSpecType_t",
-                        "PxSchedExtCause_t",
-                        "PxSchedCause_t",
-                        "PxTaskStackTypes_t",
-                        "PxTraceCtrl_t",
-                        "PxMbxReq_t",
-                        "PxIntSvEnum_t",
-                        "PxIntType_t",
-                    ]
-                )
-            )
-        )
+        .parse_callbacks(Box::new(DeriveDefmtCallbacks::new(&[
+            "PxError_t",
+            "PxMessageClass_t",
+            "PxSvc_t",
+            "PxProtectType_t",
+            "_PxObjType_t",
+            "PxOpoolType_t",
+            "PxMcType_t",
+            "_PxTmodebits",
+            "PxMsgType_t",
+            "PxStackSpecType_t",
+            "PxSchedExtCause_t",
+            "PxSchedCause_t",
+            "PxTaskStackTypes_t",
+            "PxTraceCtrl_t",
+            "PxMbxReq_t",
+            "PxIntSvEnum_t",
+            "PxIntType_t",
+        ])))
         .parse_callbacks(Box::new(PrependUnderscoresCallback::new(&safe_functions)))
         // Bindgen cannot see the Hightec toolchain, so we need to configure a
         // similar target here manually.
-        .clang_args([
-            "-target",
-            "i386",
-            "-I",
-            &KERNEL_INCLUDE,
-            "-I",
-            &UTIL_INCL,
-        ])
+        .clang_args(["-target", "i386", "-I", &KERNEL_INCLUDE, "-I", &UTIL_INCL])
         .generate()
         .expect("Unable to generate bindings");
 
-    let bindings_with_safe_wrappers = generate_safe_function_wrappers(bindings.to_string(), &safe_functions);
+    let bindings_with_safe_wrappers =
+        generate_safe_function_wrappers(bindings.to_string(), &safe_functions);
     let bindings_with_safe_wrappers_and_docs =
         inject_pxapi_doc(API_SRC, bindings_with_safe_wrappers, &safe_functions)
             .expect("Failed to inject PXROS API documentation!");
 
-    fs::write(output_file.clone(), bindings_with_safe_wrappers_and_docs).expect("Couldn't write bindings!");
+    fs::write(output_file.clone(), bindings_with_safe_wrappers_and_docs)
+        .expect("Couldn't write bindings!");
 
     // Format the resulting bindings. Requires rustfmt to be installed.
     if !std::process::Command::new("rustfmt")
@@ -303,7 +293,10 @@ struct DeriveDefmtCallbacks {
 impl DeriveDefmtCallbacks {
     fn new(derive_defmt: &[&str]) -> Self {
         Self {
-            derive_defmt: derive_defmt.iter().map(|type_name| type_name.to_string()).collect(),
+            derive_defmt: derive_defmt
+                .iter()
+                .map(|type_name| type_name.to_string())
+                .collect(),
         }
     }
 }
@@ -358,7 +351,10 @@ struct SafeFunctionWrapper {
 ///
 /// Some PXROS functions are safe to call even though they are FFI.
 /// This function wraps them in a safe function to reduce boilerplate code.
-fn generate_safe_function_wrappers(bindings: String, safe_functions: &[SafeFunctionWrapper]) -> String {
+fn generate_safe_function_wrappers(
+    bindings: String,
+    safe_functions: &[SafeFunctionWrapper],
+) -> String {
     let file = syn::parse_file(bindings.as_str()).unwrap();
 
     let generated_functions: Vec<ItemFn> = file
@@ -367,23 +363,27 @@ fn generate_safe_function_wrappers(bindings: String, safe_functions: &[SafeFunct
         .filter_map(|item| try_generate_safe_function_wrapper(item, safe_functions))
         .collect();
 
-    format!("{}", quote! {
-        #file
-        #(#generated_functions)*
-    })
+    format!(
+        "{}",
+        quote! {
+            #file
+            #(#generated_functions)*
+        }
+    )
 }
 
 /// Creates a wrapper for the supplied [`Item`] if it is contained within the `safe_functions`.
 ///
 /// Returns `None` if the item is not part of `safe_functions`.
-fn try_generate_safe_function_wrapper(item: &Item, safe_functions: &[SafeFunctionWrapper]) -> Option<ItemFn> {
+fn try_generate_safe_function_wrapper(
+    item: &Item,
+    safe_functions: &[SafeFunctionWrapper],
+) -> Option<ItemFn> {
     // Filter anything but foreign functions with a name matching a safe function.
     let Item::ForeignMod(item) = item else {
         return None;
     };
-    let Some(foreign_item) = item.items.get(0).cloned() else {
-        return None;
-    };
+    let foreign_item = item.items.first().cloned()?;
     let ForeignItem::Fn(foreign_function) = foreign_item else {
         return None;
     };
@@ -391,9 +391,7 @@ fn try_generate_safe_function_wrapper(item: &Item, safe_functions: &[SafeFunctio
 
     // To compare with the `safe_function.function_name` the prefix added by `PrependUnderscoresCallback` needs to
     // be removed.
-    let Some(stripped_function_name) = foreign_function_name.as_str().strip_prefix("__") else {
-        return None;
-    };
+    let stripped_function_name = foreign_function_name.as_str().strip_prefix("__")?;
 
     if !safe_functions
         .iter()
@@ -449,14 +447,19 @@ fn try_generate_safe_function_wrapper(item: &Item, safe_functions: &[SafeFunctio
 /// The regex matches "pub fn Px_function_name(", including optional white space characters among the tokens.
 ///
 /// The first capture group contains actual function name.
-fn inject_pxapi_doc(api_doc_path: &str, bindings: String, safe_functions: &[SafeFunctionWrapper]) -> Result<String> {
+fn inject_pxapi_doc(
+    api_doc_path: &str,
+    bindings: String,
+    safe_functions: &[SafeFunctionWrapper],
+) -> Result<String> {
     let mut out_bindings = bindings.clone();
     let re = Regex::new(r"pub\s+fn\s+(Px[a-zA-Z0-9_]*)\s*\(").unwrap();
 
     for caps in re.captures_iter(&bindings) {
         if let Some(matched_function_name) = caps.get(1) {
             let api_doc_path_temp = PathBuf::from(api_doc_path);
-            let api_doc_path_temp= api_doc_path_temp.join(matched_function_name.as_str().to_owned() + ".json");
+            let api_doc_path_temp =
+                api_doc_path_temp.join(matched_function_name.as_str().to_owned() + ".json");
             // Assume missing API file is ok (there is no matching JSON for all the Px... funcs).
             if api_doc_path_temp.exists() {
                 let api_doc_path = api_doc_path_temp.to_str().unwrap();
@@ -464,10 +467,9 @@ fn inject_pxapi_doc(api_doc_path: &str, bindings: String, safe_functions: &[Safe
                 let mut apidoc = generate_comments(api_doc_path);
 
                 // Add safety docs to apidocs.
-                if let Some(safe_function) = safe_functions
-                    .iter()
-                    .find(|safe_function| safe_function.function_name == matched_function_name.as_str())
-                {
+                if let Some(safe_function) = safe_functions.iter().find(|safe_function| {
+                    safe_function.function_name == matched_function_name.as_str()
+                }) {
                     apidoc.push_str("///\n");
                     apidoc.push_str("/// ### Safety reasoning (Veecle):\n");
 

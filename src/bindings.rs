@@ -1,9 +1,9 @@
 //! Generated raw bindings.
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
+//!
 use core::marker::PhantomData;
 
 use crate::PxResult;
@@ -131,7 +131,9 @@ mod ffi {
 
     // TODO: Hardcode the type sizes for the following types to match for the
     // HighTec compiler.
-    pub use core::ffi::{c_char, c_int, c_longlong, c_schar, c_short, c_uchar, c_ulonglong, c_ushort, c_void};
+    pub use core::ffi::{
+        c_char, c_int, c_longlong, c_schar, c_short, c_uchar, c_ulonglong, c_ushort, c_void,
+    };
 
     pub use {i32 as c_long, u32 as c_uint, u32 as c_ulong};
 }
