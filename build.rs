@@ -19,9 +19,14 @@ use quote::quote;
 use regex::Regex;
 use serde_json::Result;
 use syn::{token, Block, FnArg, ForeignItem, Item, ItemFn, Pat, PatIdent, Signature, Visibility};
-use pxros_hr;
 
 use crate::documentation_generator::api_docs_generator::generate_comments;
+
+// Config
+const WRAPPER: &str = pxros_hr::TRI_8_2_1_EVAL_WRAPPER;
+const KERNEL_INCLUDE: &str = pxros_hr::TRI_8_2_1_EVAL_KERNEL_INCL;
+const UTIL_INCL: &str = pxros_hr::TRI_8_2_1_EVAL_UTILS_INCL;
+const API_SRC: &str = pxros_hr::TRI_8_2_1_EVAL_API_SRC;
 
 fn main() {
     let outdir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
@@ -199,9 +204,8 @@ fn main() {
     ]
     .concat();
 
-    let bindings = bindgen::Builder
-        ::default()
-        .header_contents("wrapper.h", pxros_hr::WRAPPER)
+    let bindings = bindgen::Builder::default()
+        .header_contents("wrapper.h", WRAPPER)
         .use_core()
         // Allows us to use well-sized types for primitives, see module documentation.
         .ctypes_prefix("crate::bindings::ffi")
@@ -260,13 +264,21 @@ fn main() {
         .parse_callbacks(Box::new(PrependUnderscoresCallback::new(&safe_functions)))
         // Bindgen cannot see the Hightec toolchain, so we need to configure a
         // similar target here manually.
-        .clang_args(["-target", "i386"])
+        .clang_args([
+            "-target",
+            "i386",
+            "-I",
+            &KERNEL_INCLUDE,
+            "-I",
+            &UTIL_INCL,
+        ])
         .generate()
         .expect("Unable to generate bindings");
 
     let bindings_with_safe_wrappers = generate_safe_function_wrappers(bindings.to_string(), &safe_functions);
-    let bindings_with_safe_wrappers_and_docs = inject_pxapi_doc(bindings_with_safe_wrappers, &safe_functions)
-        .expect("Failed to inject PXROS API documentation!");
+    let bindings_with_safe_wrappers_and_docs =
+        inject_pxapi_doc(API_SRC, bindings_with_safe_wrappers, &safe_functions)
+            .expect("Failed to inject PXROS API documentation!");
 
     fs::write(output_file.clone(), bindings_with_safe_wrappers_and_docs).expect("Couldn't write bindings!");
 
@@ -437,17 +449,17 @@ fn try_generate_safe_function_wrapper(item: &Item, safe_functions: &[SafeFunctio
 /// The regex matches "pub fn Px_function_name(", including optional white space characters among the tokens.
 ///
 /// The first capture group contains actual function name.
-fn inject_pxapi_doc(bindings: String, safe_functions: &[SafeFunctionWrapper]) -> Result<String> {
+fn inject_pxapi_doc(api_doc_path: &str, bindings: String, safe_functions: &[SafeFunctionWrapper]) -> Result<String> {
     let mut out_bindings = bindings.clone();
     let re = Regex::new(r"pub\s+fn\s+(Px[a-zA-Z0-9_]*)\s*\(").unwrap();
 
     for caps in re.captures_iter(&bindings) {
         if let Some(matched_function_name) = caps.get(1) {
-            let mut api_doc_path = PathBuf::from("./pxros-hr/api-src/");
-            api_doc_path.push(matched_function_name.as_str().to_owned() + ".json");
+            let api_doc_path_temp = PathBuf::from(api_doc_path);
+            let api_doc_path_temp= api_doc_path_temp.join(matched_function_name.as_str().to_owned() + ".json");
             // Assume missing API file is ok (there is no matching JSON for all the Px... funcs).
-            if api_doc_path.exists() {
-                let api_doc_path = api_doc_path.to_str().unwrap();
+            if api_doc_path_temp.exists() {
+                let api_doc_path = api_doc_path_temp.to_str().unwrap();
                 println!("PXDOCGEN: Processing: {}", api_doc_path);
                 let mut apidoc = generate_comments(api_doc_path);
 
