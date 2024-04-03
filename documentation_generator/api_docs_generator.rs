@@ -1,9 +1,8 @@
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
-use std::collections::HashMap;
+//!
 use std::fmt;
 
 use regex::Regex;
@@ -30,12 +29,6 @@ pub struct ApiDescription {
     see_also: Option<Vec<SeeAlso>>,
     usage: Option<Vec<String>>,
     cop: Option<Cop>,
-}
-
-#[derive(Debug, Deserialize)]
-enum ErrorCodes {
-    Simple(Vec<String>),
-    PlatformSpecific(Vec<HashMap<String, Vec<String>>>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -158,11 +151,12 @@ fn convert_c_func_to_rust(c_func: &str) -> String {
                 2 => {
                     let (param_type, param_name) = (p[0].trim(), p[1].trim());
                     rust_params.push(format!("{}: {}", param_name, param_type));
-                },
+                }
                 3 => {
-                    let (param_type, param_name, param_type2) = (p[0].trim(), p[1].trim(), p[2].trim());
+                    let (param_type, param_name, param_type2) =
+                        (p[0].trim(), p[1].trim(), p[2].trim());
                     rust_params.push(format!("{}: {} {}", param_name, param_type, param_type2));
-                },
+                }
                 _ => (),
             }
         }
@@ -176,11 +170,19 @@ fn convert_c_func_to_rust(c_func: &str) -> String {
 
     let rust_params_str = rust_params.join(", ");
 
-    format!("fn {}({}) {};", func_name, rust_params_str, rust_return_type)
+    format!(
+        "fn {}({}) {};",
+        func_name, rust_params_str, rust_return_type
+    )
 }
 
 /// Writes a documentation section with a given title and items list, formatted according to `format_type`.
-fn write_section<T, I>(f: &mut fmt::Formatter, title: &str, items: I, format_type: FormatType) -> fmt::Result
+fn write_section<T, I>(
+    f: &mut fmt::Formatter,
+    title: &str,
+    items: I,
+    format_type: FormatType,
+) -> fmt::Result
 where
     T: AsRef<str>,
     I: IntoIterator<Item = T>,
@@ -194,7 +196,7 @@ where
                 writeln!(f, "/// {}", convert_c_func_to_rust(item.as_ref()))?;
                 // writeln!(f, "/// {}", item.as_ref())?;
             }
-        },
+        }
         FormatType::List { literal } => {
             for item in items {
                 if literal {
@@ -203,14 +205,14 @@ where
                     writeln!(f, "/// * {}", item.as_ref())?;
                 }
             }
-        },
+        }
         FormatType::Code => {
             writeln!(f, "/// ```c")?;
             for item in items {
                 writeln!(f, "/// {}", item.as_ref().replace('\t', " "))?;
             }
             writeln!(f, "/// ```")?;
-        },
+        }
     }
 
     Ok(())
@@ -249,7 +251,12 @@ impl fmt::Display for ApiDescription {
 
         // Applies to version
         if !self.applies_to.is_empty() {
-            write_section(f, "Applies To", self.applies_to.iter(), FormatType::List { literal: false })?;
+            write_section(
+                f,
+                "Applies To",
+                self.applies_to.iter(),
+                FormatType::List { literal: false },
+            )?;
         }
 
         // Synopsis
@@ -273,14 +280,24 @@ impl fmt::Display for ApiDescription {
         // Return values
         if let Some(ret_values) = &self.ret_values {
             if !ret_values.is_empty() {
-                write_section(f, "Return Values", ret_values.iter(), FormatType::List { literal: false })?;
+                write_section(
+                    f,
+                    "Return Values",
+                    ret_values.iter(),
+                    FormatType::List { literal: false },
+                )?;
             }
         }
 
         // Error codes
         if let Some(err_codes) = &self.err_codes {
             if !err_codes.is_empty() {
-                write_section(f, "Error Codes", err_codes.iter(), FormatType::List { literal: true })?;
+                write_section(
+                    f,
+                    "Error Codes",
+                    err_codes.iter(),
+                    FormatType::List { literal: true },
+                )?;
             }
         }
 

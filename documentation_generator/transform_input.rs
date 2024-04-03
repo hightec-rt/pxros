@@ -1,8 +1,8 @@
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
+//!
 use std::fs::File;
 use std::io::Read;
 
@@ -45,7 +45,8 @@ pub fn transform_input(file_path: &str) -> String {
 
     // Read the file contents into a string
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Failed to read file");
+    file.read_to_string(&mut contents)
+        .expect("Failed to read file");
 
     // Parse the JSON string into a serde_json::Value
     let mut json_value: Value = serde_json::from_str(&contents).expect("Failed to parse JSON");
@@ -79,10 +80,12 @@ pub fn transform_input(file_path: &str) -> String {
         if let Some(array) = json_value.get_mut(key).and_then(Value::as_array_mut) {
             let target_value = array.first().and_then(|entry| entry.get(target_key));
             *array = match target_value {
-                Some(target_array) if target_array.is_array() => target_array.as_array().unwrap().to_vec(),
+                Some(target_array) if target_array.is_array() => {
+                    target_array.as_array().unwrap().to_vec()
+                }
                 Some(target_string) if target_string.is_string() => {
                     vec![json!(target_string.as_str().unwrap())]
-                },
+                }
                 _ if array.iter().any(|entry| entry.get("ARM-CMX").is_some()) => Vec::new(),
                 _ => array.clone(),
             };
@@ -111,7 +114,9 @@ pub fn transform_input(file_path: &str) -> String {
                     if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
                         match item_type {
                             "PP" => {
-                                if let Some(pp_content) = item.get(target_key).and_then(|v| v.as_array()) {
+                                if let Some(pp_content) =
+                                    item.get(target_key).and_then(|v| v.as_array())
+                                {
                                     for content in pp_content {
                                         if let Some(content_text) = content.as_str() {
                                             transformed_text.push('\n');
@@ -119,21 +124,26 @@ pub fn transform_input(file_path: &str) -> String {
                                             transformed_text.push('\n');
                                         }
                                     }
-                                } else if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                } else if let Some(text) = item.get("text").and_then(|t| t.as_str())
+                                {
                                     transformed_text.push('\n');
                                     transformed_text.push_str(text);
                                     transformed_text.push('\n');
                                 }
-                            },
+                            }
                             "BL" => {
-                                if let Some(bullets) = item.get(target_key).and_then(|v| v.as_array()) {
+                                if let Some(bullets) =
+                                    item.get(target_key).and_then(|v| v.as_array())
+                                {
                                     for bullet in bullets {
                                         if let Some(bullet_text) = bullet.as_str() {
                                             transformed_text.push_str("\n * ");
                                             transformed_text.push_str(bullet_text);
                                         }
                                     }
-                                } else if let Some(bullets) = item.get("text").and_then(|t| t.as_array()) {
+                                } else if let Some(bullets) =
+                                    item.get("text").and_then(|t| t.as_array())
+                                {
                                     for bullet in bullets {
                                         if let Some(bullet_text) = bullet.as_str() {
                                             transformed_text.push_str("\n * ");
@@ -142,8 +152,8 @@ pub fn transform_input(file_path: &str) -> String {
                                     }
                                     transformed_text.push('\n');
                                 }
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -172,7 +182,9 @@ pub fn transform_input(file_path: &str) -> String {
             for key in ["BeforeCall", "AfterCall", "BestPractice"].iter() {
                 if let Some(section) = cop.get_mut(*key).and_then(|s| s.as_array_mut()) {
                     if let Some(first) = section.first_mut() {
-                        if let Some(target_array) = first.get_mut(target_key).and_then(|ta| ta.as_array_mut()) {
+                        if let Some(target_array) =
+                            first.get_mut(target_key).and_then(|ta| ta.as_array_mut())
+                        {
                             let mut new_section = Vec::new();
                             for item in target_array.iter() {
                                 if let Some(text) = item.as_str() {
@@ -196,5 +208,6 @@ pub fn transform_input(file_path: &str) -> String {
     transform_description(&mut json_value, "TC23");
     transform_cop(&mut json_value, "TC23");
 
-    serde_json::to_string_pretty(&json_value).expect("[*] =====> Failed to transform input file !!!")
+    serde_json::to_string_pretty(&json_value)
+        .expect("[*] =====> Failed to transform input file !!!")
 }

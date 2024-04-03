@@ -7,11 +7,11 @@
 //!
 //! For now, we only expose the types but only defer to the default impl
 //! when using them.
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
+//!
 use core::ops::Range;
 
 use super::bindings::*;

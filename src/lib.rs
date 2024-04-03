@@ -2,11 +2,11 @@
 //!
 //! This crate "wraps" the raw bindings in Rust data structures and provides a more
 //! rusty interface. It minimizes logical changes.
-//! 
+//!
 //! SPDX-FileCopyrightText: Veecle GmbH, HighTec EDV-Systeme GmbH
-//! 
+//!
 //! SPDX-License-Identifier: Apache-2.0
-//! 
+//!
 #![cfg_attr(not(test), no_std)]
 
 use bindings::PxError_t;
