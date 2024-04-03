@@ -1,6 +1,6 @@
 [package]
 name = "pxros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Veecle GmbH - info@veecle.io", "HighTec EDV-Systeme GmbH - info@hightec-rt.com"]
 description = "PXROS-HR Rust wrappers and bindings"
 repository = "https://github.com/hightec-rt/pxros"
@@ -20,7 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 syn = { version = "2.0.52", features = ["full"] }
 regex = "1.10.3"
-pxros-hr = { version = "0.1.0",  registry = "htc-cargo-index" }
+pxros-hr = { version = "0.2.0",  registry = "htc-cargo-index" }
 
 [target.tc162-htc-none]
 # Default dwarf version of v0.2.0 HighTec compiler is version 2 which is
